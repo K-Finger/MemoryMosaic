@@ -55,6 +55,7 @@ const PlacedImage = memo(({ src, x, y, w, h, caption, onHover, onClick }: {
       x={x} y={y}
       width={w} height={h}
       offsetX={0} offsetY={0}
+      // pointer click
       onMouseEnter={() => {
         if (hoverSound) { hoverSound.currentTime = 0; hoverSound.play().catch(() => {}); }
         if (caption) onHover({ x: x + w, y, h, caption });

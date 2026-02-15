@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MinneMosaic",
+  title: "MemoryMosaic",
   description: "A Growing Mosaic of UMN College life",
 };
 
