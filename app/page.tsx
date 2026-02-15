@@ -1,6 +1,6 @@
 "use client"
 import Image from "next/image";
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { Stage, Layer, Image as KonvaImage, Rect, Text } from "react-konva";
 import Konva from 'konva';
 
@@ -22,6 +22,17 @@ const ColoredRect = () => {
 };
 
 export default function Home() {
+  const [placements, setPlacements] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/placements")
+      .then((res) => res.json())
+      .then((data) => {
+        setPlacements(data);
+      })
+      .catch(console.error);
+  }, []);
+
   const width = window.innerWidth;
   const height = window.innerHeight;
 
