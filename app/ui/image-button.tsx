@@ -80,7 +80,7 @@ export default function UploadPage({
     }
     objectUrlRef.current = objectUrl;
 
-    const img = new Image();
+    const img = new window.Image();
     img.onload = () =>
       onFileSelect(objectUrl, img.naturalWidth, img.naturalHeight);
     img.onerror = () => {
@@ -107,6 +107,7 @@ export default function UploadPage({
     formData.append("h", String(Math.round(imageProps.h)));
     formData.append("caption", caption);
 
+    try {
     const response = await fetch("/api/placements", {
         method: "POST",
         body: formData,
@@ -126,50 +127,6 @@ export default function UploadPage({
     } finally {
       setUploading(false);
     }
-    else {
-        setFile(null);
-        setCaption("");
-        onFileSelect(null, 0, 0);
-        onUploaded(result);
-    }
-    setUploading(false);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => {
-          const f = e.target.files?.[0] ?? null;
-          setFile(f);
-          if (f) {
-            const img = new window.Image();
-            img.src = URL.createObjectURL(f);
-            img.onload = () => onFileSelect(img.src, img.naturalWidth, img.naturalHeight);
-          } else {
-            onFileSelect(null, 0, 0);
-          }
-        }}
-      />
-
-      <input
-        type="text"
-        placeholder="Add a caption..."
-        value={caption}
-        onChange={(e) => setCaption(e.target.value)}
-        className="px-3 py-2 border rounded"
-        maxLength={200}
-      />
-
-      <button
-        type="submit"
-        disabled={!file || uploading || !canSubmit}
-        className="px-4 py-2 bg-blue-500 text-white disabled:bg-gray-300"
-      >
-        {uploading ? "Submitting..." : "Submit"}
-      </button>
-    </form>
   };
 
   return (
@@ -205,6 +162,21 @@ export default function UploadPage({
                 accept="image/*"
                 onChange={handleFileChange}
                 className="cursor-pointer border-white/20 bg-white/10 text-xs text-slate-100 file:mr-2 file:rounded-md file:border-0 file:bg-slate-200/20 file:px-2 file:py-1 file:text-xs file:text-slate-100 hover:bg-white/15"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="caption-input" className="text-xs text-slate-200">
+                Caption
+              </Label>
+              <Input
+                id="caption-input"
+                type="text"
+                placeholder="Add a caption..."
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                maxLength={200}
+                className="border-white/20 bg-white/10 text-xs text-slate-100 placeholder:text-slate-400 hover:bg-white/15"
               />
             </div>
 

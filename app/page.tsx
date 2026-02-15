@@ -1,6 +1,6 @@
 "use client"
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Stage, Layer, Image as KonvaImage, Rect } from "react-konva";
+import { useState, useEffect, useRef, useCallback, forwardRef } from 'react';
+import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from "react-konva";
 import Konva from 'konva';
 import { KonvaEventObject } from "konva/lib/Node";
 import useImage from 'use-image';
@@ -23,11 +23,18 @@ type Placement = {
 const hoverSound = typeof window !== 'undefined' ? new Audio('/hover.wav') : null;
 if (hoverSound) hoverSound.volume = 0.15;
 
-const URLImage = ({ src, ...rest }: {src: string; [key: string]: any}) => {
-  const [image, status] = useImage(src);
+const pickupSound = typeof window !== 'undefined' ? new Audio('/hover2.wav') : null;
+if (pickupSound) pickupSound.volume = 0.15;
+
+const snapSound = typeof window !== 'undefined' ? new Audio('/bubble.wav') : null;
+if (snapSound) snapSound.volume = 0.15;
+
+
+const URLImage = forwardRef<Konva.Image, {src: string; [key: string]: any}>(({ src, image: _ignored, ...rest }, ref) => {
+  const [img, status] = useImage(src);
   if (status === 'failed') console.error('Failed to load image:', src);
-  return <KonvaImage image={image ?? undefined} {...(rest as Konva.ImageConfig)} />;
-};
+  return <KonvaImage ref={ref} {...(rest as Konva.ImageConfig)} image={img ?? undefined} />;
+});
 
 const PlacedImage = ({ src, x, y, w, h, caption, onHover }: {
   src: string; x: number; y: number; w: number; h: number;
@@ -138,6 +145,8 @@ export default function Home() {
   const [tooltip, setTooltip] = useState<{x: number; y: number; h: number; caption: string} | null>(null);
   const [ghost, setGhost] = useState<{src: string; x: number; y: number; w: number; h: number} | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  const ghostRef = useRef<Konva.Image>(null);
+  const trRef = useRef<Konva.Transformer>(null);
   const [scale, setScale] = useState(0.3);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ w: 800, h: 600 });
@@ -150,6 +159,13 @@ export default function Home() {
     addEventListener('resize', resize);
     return () => removeEventListener('resize', resize);
   }, []);
+
+  useEffect(() => {
+    if (ghost && ghostRef.current && trRef.current) {
+      trRef.current.nodes([ghostRef.current]);
+      trRef.current.getLayer()?.batchDraw();
+    }
+  }, [ghost]);
 
   const clampScale = (value: number) => Math.max(0.05, Math.min(5, value));
 
@@ -228,26 +244,58 @@ export default function Home() {
             <PlacedImage key={p.id} src={p.url} x={p.x} y={p.y} w={p.w} h={p.h} caption={p.caption} onHover={setTooltip} />
           ))}
           {ghost && (
-            <URLImage
-              src={ghost.src}
-              x={ghost.x} y={ghost.y}
-              width={ghost.w} height={ghost.h}
-              draggable
-              onDragEnd={(e: KonvaEventObject<DragEvent>) => {
-                const dropX = e.target.x();
-                const dropY = e.target.y();
-                const snap = findSnapPosition(dropX, dropY, ghost.w, ghost.h, placements);
-                if (snap) {
-                  setGhost({ ...ghost, x: snap.x, y: snap.y });
-                  e.target.x(snap.x);
-                  e.target.y(snap.y);
-                } else {
-                  // no valid position, revert to previous spot
-                  e.target.x(ghost.x);
-                  e.target.y(ghost.y);
-                }
-              }}
-            />
+            <>
+              <URLImage
+                ref={ghostRef}
+                src={ghost.src}
+                x={ghost.x} y={ghost.y}
+                width={ghost.w} height={ghost.h}
+                draggable
+                onDragStart={() => {
+                  if (pickupSound) { pickupSound.currentTime = 0; pickupSound.play().catch(() => {}); }
+                }}
+                onDragEnd={(e: KonvaEventObject<DragEvent>) => {
+                  const dropX = e.target.x();
+                  const dropY = e.target.y();
+                  const snap = findSnapPosition(dropX, dropY, ghost.w, ghost.h, placements);
+                  if (snap) {
+                    if (snapSound) { snapSound.currentTime = 0; snapSound.play().catch(() => {}); }
+                    setGhost({ ...ghost, x: snap.x, y: snap.y });
+                    e.target.x(snap.x);
+                    e.target.y(snap.y);
+                  } else {
+                    e.target.x(ghost.x);
+                    e.target.y(ghost.y);
+                  }
+                }}
+                onTransformEnd={() => {
+                  const node = ghostRef.current;
+                  if (!node) return;
+                  const scaleX = node.scaleX();
+                  const scaleY = node.scaleY();
+                  node.scaleX(1);
+                  node.scaleY(1);
+                  setGhost({
+                    ...ghost,
+                    x: node.x(),
+                    y: node.y(),
+                    w: Math.round(node.width() * scaleX),
+                    h: Math.round(node.height() * scaleY),
+                  });
+                }}
+              />
+              <Transformer
+                ref={trRef}
+                keepRatio
+                rotateEnabled={false}
+                enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+                boundBoxFunc={(_, newBox) => {
+                  const min = 50;
+                  if (newBox.width < min || newBox.height < min) return _;
+                  return newBox;
+                }}
+              />
+            </>
           )}
         </Layer>
       </Stage>
@@ -270,7 +318,6 @@ export default function Home() {
           {tooltip.caption}
         </div>
       )}
-    </>
 
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.22),_transparent_40%),radial-gradient(circle_at_bottom_left,_rgba(14,116,144,0.28),_transparent_45%)]" />
