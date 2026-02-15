@@ -1,12 +1,10 @@
 "use client"
 import { useState, useEffect, useRef} from 'react';
-import { Stage, Layer, Image as KonvaImage, Rect, Text } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Rect } from "react-konva";
 import Konva from 'konva';
 import { KonvaEventObject } from "konva/lib/Node";
 import useImage from 'use-image';
 import UploadPage from './ui/image-button';
-
-const CANVAS_SIZE = 6000;
 
 // an image placement
 type Placement = {
@@ -18,35 +16,8 @@ type Placement = {
   url: string;
 };
 
-const ColoredRect = () => {
-  const [color, setColor] = useState('green');
-  return (
-    <Rect
-      x={20}
-      y={20}
-      width={50}
-      height={50}
-      fill={color}
-      shadowBlur={5}
-      onDragEnd={() => {
-        setColor(Konva.Util.getRandomColor());
-      }}
-      draggable
-      />
-  )
-};
 
-const CanvasBackground = () => {
-  return ( 
-  <Rect 
-    x={-CANVAS_SIZE/2} y={-CANVAS_SIZE/2} 
-    width={CANVAS_SIZE} height={CANVAS_SIZE} 
-    fill="white" 
-  />
-  )
-}
-
-const URLImage = ({ src, ...rest }: {src: string}) => {
+const URLImage = ({ src, ...rest }: {src: string; [key: string]: any}) => {
   const [image] = useImage(src, 'anonymous');
   return <KonvaImage image={image} {...rest} />;
 };
@@ -86,12 +57,6 @@ function checkImageOverlap(draggedImage: {x: number, y: number, w: number, h: nu
   );
 }
 
-//       <Rect x={ghosPos.x} y={ghosPos.y} width={width} height={height} fill="white" onDragEnd={(e) => setghosPos({x: e.target.x(), y: e.target.y()})}/>
-//         <ColoredRect/>
-//       </Layer>
-//     </Stage>
-//         <UploadPage imageProps={ghosPos}/>
-
 export default function Home() {
   const [placements, setPlacements] = useState<Placement[]>([]);
 
@@ -99,12 +64,13 @@ export default function Home() {
     fetch("/api/placements")
       .then((res) => res.json())
       .then((data) => {
+        console.log("placements:", data);
         setPlacements(data);
       })
       .catch(console.error);
     }, []);
     
-  const [ghosPos, setghosPos] = useState({x:0, y:0});
+  const [ghost, setGhost] = useState<{src: string; x: number; y: number; w: number; h: number} | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -142,7 +108,13 @@ export default function Home() {
 
   return (
     <>
-      <UploadPage imageProps={ghosPos}/>
+      <UploadPage
+        imageProps={ghost ?? {x: 0, y: 0, w: 0, h: 0}}
+        onFileSelect={(src: string | null, w: number, h: number) => {
+          if (src) setGhost({ src, x: 0, y: 0, w, h });
+          else setGhost(null);
+        }}
+      />
       <Stage
         ref={stageRef}
         width={size.w} height={size.h}
@@ -157,8 +129,21 @@ export default function Home() {
         }}
       >
         <Layer>
-          <CanvasBackground/>
-          <ColoredRect/>
+          <Rect x={-3000} y={-3000} width={6000} height={6000} fill="white" />
+          {placements.map((p) => (
+            <URLImage key={p.id} src={p.url} x={p.x} y={p.y} width={p.w} height={p.h} />
+          ))}
+          {ghost && (
+            <URLImage
+              src={ghost.src}
+              x={ghost.x} y={ghost.y}
+              width={ghost.w} height={ghost.h}
+              draggable
+              onDragEnd={(e: any) => {
+                setGhost({ ...ghost, x: e.target.x(), y: e.target.y() });
+              }}
+            />
+          )}
         </Layer>
       </Stage>
     </>
