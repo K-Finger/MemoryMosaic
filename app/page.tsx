@@ -8,6 +8,16 @@ import UploadPage from './ui/image-button';
 
 const CANVAS_SIZE = 6000;
 
+// an image placement
+type Placement = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  url: string;
+};
+
 const ColoredRect = () => {
   const [color, setColor] = useState('green');
   return (
@@ -41,8 +51,64 @@ const URLImage = ({ src, ...rest }: {src: string}) => {
   return <KonvaImage image={image} {...rest} />;
 };
 
+const CanvasBackground = () => {
+  return ( 
+  <Rect 
+    x={-CANVAS_SIZE/2} y={-CANVAS_SIZE/2} 
+    width={CANVAS_SIZE} height={CANVAS_SIZE} 
+    fill="white" 
+  />
+  )
+}
+
+const URLImage = ({ src, ...rest }: {src: string}) => {
+  const [image] = useImage(src, 'anonymous');
+  return <KonvaImage image={image} {...rest} />;
+};
+
+function findSnapPosition(dropX: number, dropY: number, w: number, h: number, placements: Placement[]): {x: number, y: number} | null {
+  if (placements.length === 0) return { x: dropX, y: dropY };
+
+  let best: {x: number, y: number} | null = null;
+  let bestDist = Infinity;
+
+  for (const p of placements) {
+    const candidates = [
+      { x: p.x + p.w, y: dropY }, // right of p
+      { x: p.x - w,   y: dropY }, // left of p
+      { x: dropX,     y: p.y + p.h }, // below p
+      { x: dropX,     y: p.y - h },   // above p
+    ];
+
+    for (const c of candidates) {
+      const dist = Math.hypot(c.x - dropX, c.y - dropY);
+      if (dist < bestDist && !checkImageOverlap({ x: c.x, y: c.y, w, h }, placements)) {
+        best = c;
+        bestDist = dist;
+      }
+    }
+  }
+
+  return best;
+}
+
+function checkImageOverlap(draggedImage: {x: number, y: number, w: number, h: number}, placements: Placement[]) {
+  return placements.some((p) =>
+    draggedImage.x < p.x + p.w &&
+    draggedImage.x + draggedImage.w > p.x &&
+    draggedImage.y < p.y + p.h &&
+    draggedImage.y + draggedImage.h > p.y
+  );
+}
+
+//       <Rect x={ghosPos.x} y={ghosPos.y} width={width} height={height} fill="white" onDragEnd={(e) => setghosPos({x: e.target.x(), y: e.target.y()})}/>
+//         <ColoredRect/>
+//       </Layer>
+//     </Stage>
+//         <UploadPage imageProps={ghosPos}/>
+
 export default function Home() {
-  const [placements, setPlacements] = useState([]);
+  const [placements, setPlacements] = useState<Placement[]>([]);
 
   useEffect(() => {
     fetch("/api/placements")
@@ -51,8 +117,9 @@ export default function Home() {
         setPlacements(data);
       })
       .catch(console.error);
-  }, []);
-
+    }, []);
+    
+  const [ghosPos, setghosPos] = useState({x:0, y:0});
   const stageRef = useRef<Konva.Stage>(null);
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
