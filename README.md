@@ -11,6 +11,8 @@ MinneMosaic is a collaborative, never-ending mosaic where anyone can upload an i
 
 Hover over any tile to read its caption and learn the story behind it.
 
+![MinneMosaic view](public/view.png)
+
 ![MinneMosaic preview](public/readmepreview.png)
 
 ## How to Run

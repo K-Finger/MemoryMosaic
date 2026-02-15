@@ -31,6 +31,8 @@ type ImageProps = {
 type UploadPanelProps = {
   imageProps: ImageProps;
   canSubmit?: boolean;
+  adminMode: boolean;
+  onAdminToggle: () => void;
   onFileSelect: (src: string | null, w: number, h: number) => void;
   onUploaded: (placement: Placement) => void;
 };
@@ -38,6 +40,8 @@ type UploadPanelProps = {
 export default function UploadPage({
   imageProps,
   canSubmit = true,
+  adminMode,
+  onAdminToggle,
   onFileSelect,
   onUploaded,
 }: UploadPanelProps) {
@@ -189,7 +193,14 @@ export default function UploadPage({
               <span>H: {Math.round(imageProps.h)}</span>
             </div>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={onAdminToggle}
+                className={`text-[11px] transition-colors ${adminMode ? 'text-red-400/80 hover:text-red-300' : 'text-slate-500/50 hover:text-slate-300'}`}
+              >
+                {adminMode ? 'exit admin' : 'admin'}
+              </button>
               <Button
                 type="submit"
                 disabled={!file || uploading || !canSubmit}

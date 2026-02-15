@@ -15,6 +15,8 @@ type FloatingUploadPanelProps = {
   ghost: { src: string; x: number; y: number; w: number; h: number } | null;
   placementsCount: number;
   isGhostAdjacent: boolean;
+  adminMode: boolean;
+  onAdminToggle: () => void;
   onFileSelect: (src: string | null, w: number, h: number) => void;
   onUploaded: (placement: Placement) => void;
 };
@@ -23,6 +25,8 @@ const FloatingUploadPanel = ({
   ghost,
   placementsCount,
   isGhostAdjacent,
+  adminMode,
+  onAdminToggle,
   onFileSelect,
   onUploaded,
 }: FloatingUploadPanelProps) => {
@@ -35,6 +39,8 @@ const FloatingUploadPanel = ({
       <UploadPage
         imageProps={imageProps}
         canSubmit={ghost != null && (placementsCount === 0 || isGhostAdjacent)}
+        adminMode={adminMode}
+        onAdminToggle={onAdminToggle}
         onFileSelect={onFileSelect}
         onUploaded={onUploaded}
       />

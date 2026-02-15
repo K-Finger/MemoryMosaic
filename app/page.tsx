@@ -34,10 +34,11 @@ const URLImage = forwardRef<Konva.Image, {src: string; [key: string]: any}>(({ s
   return <KonvaImage ref={ref} {...(rest as Konva.ImageConfig)} image={img ?? undefined} />;
 });
 
-const PlacedImage = ({ src, x, y, w, h, caption, onHover }: {
+const PlacedImage = ({ src, x, y, w, h, caption, onHover, onClick }: {
   src: string; x: number; y: number; w: number; h: number;
   caption?: string;
   onHover: (info: {x: number; y: number; h: number; caption: string} | null) => void;
+  onClick?: () => void;
 }) => {
   const [image] = useImage(src);
   const imgRef = useRef<Konva.Image>(null);
@@ -74,6 +75,7 @@ const PlacedImage = ({ src, x, y, w, h, caption, onHover }: {
           easing: Konva.Easings.EaseInOut,
         });
       }}
+      onClick={onClick}
     />
   );
 };
@@ -85,10 +87,6 @@ const DotGridBackground = ({ x, y, w, h }: { x: number; y: number; w: number; h:
       x={x} y={y} width={w} height={h}
       fillPatternImage={pattern}
       fillPatternRepeat="repeat"
-      // cornerRadius={24}
-      // shadowBlur={40}
-      // shadowOpacity={0.08}
-      // shadowOffset={{ x: 0, y: 12 }}
     />
   );
 };
@@ -111,6 +109,9 @@ export default function Home() {
     
   const [tooltip, setTooltip] = useState<{x: number; y: number; h: number; caption: string} | null>(null);
   const [ghost, setGhost] = useState<{src: string; x: number; y: number; w: number; h: number} | null>(null);
+  const [adminMode, setAdminMode] = useState(false);
+  const [adminKey, setAdminKey] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const ghostRef = useRef<Konva.Image>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -169,6 +170,21 @@ export default function Home() {
     });
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/placements/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': adminKey },
+      });
+      if (res.ok) {
+        setPlacements((prev) => prev.filter((p) => p.id !== id));
+        setSelectedId(null);
+      }
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
+
   const onWheel = (e: KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -198,8 +214,21 @@ export default function Home() {
         <Layer>
           <DotGridBackground x={canvasBounds.x} y={canvasBounds.y} w={canvasBounds.w} h={canvasBounds.h} />
           {placements.map((p) => (
-            <PlacedImage key={p.id} src={p.url} x={p.x} y={p.y} w={p.w} h={p.h} caption={p.caption} onHover={setTooltip} />
+            <PlacedImage key={p.id} src={p.url} x={p.x} y={p.y} w={p.w} h={p.h} caption={p.caption} onHover={setTooltip}
+              onClick={() => adminMode && setSelectedId(selectedId === p.id ? null : p.id)}
+            />
           ))}
+          {adminMode && selectedId && (() => {
+            const sel = placements.find((p) => p.id === selectedId);
+            if (!sel) return null;
+            return (
+              <Rect
+                x={sel.x} y={sel.y} width={sel.w} height={sel.h}
+                stroke="#ef4444" strokeWidth={4 / scale} dash={[10 / scale, 6 / scale]}
+                listening={false}
+              />
+            );
+          })()}
           {ghost && (
             <>
               <URLImage
@@ -208,7 +237,7 @@ export default function Home() {
                 x={ghost.x} y={ghost.y}
                 width={ghost.w} height={ghost.h}
                 draggable
-onDragEnd={(e: KonvaEventObject<DragEvent>) => {
+                onDragEnd={(e: KonvaEventObject<DragEvent>) => {
                   const dropX = e.target.x();
                   const dropY = e.target.y();
                   const snap = snapPosition(dropX, dropY, ghost.w, ghost.h, placements);
@@ -219,7 +248,7 @@ onDragEnd={(e: KonvaEventObject<DragEvent>) => {
                   e.target.x(snap.x);
                   e.target.y(snap.y);
                 }}
-                onTransformEnd={() => {
+                onTransformEnd={() => { // SNAPPING
                   const node = ghostRef.current;
                   if (!node) return;
                   const sx = node.scaleX();
@@ -281,6 +310,17 @@ onDragEnd={(e: KonvaEventObject<DragEvent>) => {
             ghost={ghost}
             placementsCount={placements.length}
             isGhostAdjacent={ghost != null && isAdjacent(ghost, placements)}
+            adminMode={adminMode}
+            onAdminToggle={() => {
+              if (adminMode) {
+                setAdminMode(false);
+                setAdminKey('');
+                setSelectedId(null);
+              } else {
+                const key = prompt('Enter admin key:');
+                if (key) { setAdminKey(key); setAdminMode(true); }
+              }
+            }}
             onFileSelect={(src: string | null, w: number, h: number) => {
               if (!src) {
                 setGhost(null);
@@ -312,6 +352,22 @@ onDragEnd={(e: KonvaEventObject<DragEvent>) => {
           onFitCanvas={fitCanvas}
           onResetView={resetView}
         />
+
+        {adminMode && selectedId && (() => {
+          const sel = placements.find((p) => p.id === selectedId);
+          if (!sel) return null;
+          const btnX = (sel.x + sel.w) * scale + pos.x + 8;
+          const btnY = sel.y * scale + pos.y;
+          return (
+            <button
+              onClick={() => handleDelete(selectedId)}
+              style={{ position: 'fixed', left: btnX, top: btnY, zIndex: 200 }}
+              className="pointer-events-auto rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-red-500"
+            >
+              Delete
+            </button>
+          );
+        })()}
       </div>
     </main>
   );
