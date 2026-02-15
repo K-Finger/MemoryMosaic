@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useRef, useCallback, forwardRef } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, memo, useMemo } from 'react';
 import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from "react-konva";
 import Konva from 'konva';
 import { KonvaEventObject } from "konva/lib/Node";
@@ -39,7 +39,7 @@ const URLImage = forwardRef<Konva.Image, {src: string; [key: string]: any}>(({ s
   return <KonvaImage ref={ref} {...(rest as Konva.ImageConfig)} image={img ?? undefined} />;
 });
 
-const PlacedImage = ({ src, x, y, w, h, caption, onHover, onClick }: {
+const PlacedImage = memo(({ src, x, y, w, h, caption, onHover, onClick }: {
   src: string; x: number; y: number; w: number; h: number;
   caption?: string;
   onHover: (info: {x: number; y: number; h: number; caption: string} | null) => void;
@@ -82,7 +82,7 @@ const PlacedImage = ({ src, x, y, w, h, caption, onHover, onClick }: {
       onClick={onClick}
     />
   );
-};
+});
 
 const DotGridBackground = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }) => {
   const [pattern] = useImage('/dot-grid.webp');
@@ -212,6 +212,11 @@ export default function Home() {
 
   const selected = adminMode && selectedId ? placements.find((p) => p.id === selectedId) : null;
 
+  const visiblePlacements = useMemo(() => placements.filter((p) =>
+    p.x + p.w > viewLeft && p.x < viewLeft + viewW &&
+    p.y + p.h > viewTop && p.y < viewTop + viewH
+  ), [placements, viewLeft, viewTop, viewW, viewH]);
+
   const onWheel = (e: KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -240,10 +245,7 @@ export default function Home() {
       >
         <Layer>
           <DotGridBackground x={viewLeft} y={viewTop} w={viewW} h={viewH} />
-          {placements.filter((p) =>
-            p.x + p.w > viewLeft && p.x < viewLeft + viewW &&
-            p.y + p.h > viewTop && p.y < viewTop + viewH
-          ).map((p) => (
+          {visiblePlacements.map((p) => (
             <PlacedImage key={p.id} src={p.url} x={p.x} y={p.y} w={p.w} h={p.h} caption={p.caption} onHover={setTooltip}
               onClick={() => adminMode && setSelectedId(selectedId === p.id ? null : p.id)}
             />
