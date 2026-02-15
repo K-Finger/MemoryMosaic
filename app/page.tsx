@@ -1,10 +1,11 @@
 "use client"
-import { useState, useEffect, useRef} from 'react';
+import { useState, useEffect, useRef, ComponentProps } from 'react';
 import { Stage, Layer, Image as KonvaImage, Rect, Text } from "react-konva";
 import Konva from 'konva';
 import { KonvaEventObject } from "konva/lib/Node";
 import useImage from 'use-image';
 import UploadPage from './ui/image-button';
+import CanvasBackground from './components/CanvasBackground';
 
 const CANVAS_SIZE = 6000;
 
@@ -28,25 +29,17 @@ const ColoredRect = () => {
       height={50}
       fill={color}
       shadowBlur={5}
+      draggable
       onDragEnd={() => {
         setColor(Konva.Util.getRandomColor());
       }}
-      draggable
       />
   )
 };
 
-const CanvasBackground = () => {
-  return ( 
-  <Rect 
-    x={-CANVAS_SIZE/2} y={-CANVAS_SIZE/2} 
-    width={CANVAS_SIZE} height={CANVAS_SIZE} 
-    fill="white" 
-  />
-  )
-}
+type URLImageProps = { src: string } & Omit<ComponentProps<typeof KonvaImage>, 'image'>;
 
-const URLImage = ({ src, ...rest }: {src: string}) => {
+const URLImage = ({ src, ...rest }: URLImageProps) => {
   const [image] = useImage(src, 'anonymous');
   return <KonvaImage image={image} {...rest} />;
 };
@@ -94,7 +87,12 @@ function checkImageOverlap(draggedImage: {x: number, y: number, w: number, h: nu
 
 export default function Home() {
   const [placements, setPlacements] = useState<Placement[]>([]);
-
+  const [ghosPos, setghosPos] = useState({x:0, y:0});
+  const stageRef = useRef<Konva.Stage>(null);
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [size, setSize] = useState({ w: 800, h: 600 });
+  
   useEffect(() => {
     fetch("/api/placements")
       .then((res) => res.json())
@@ -103,12 +101,6 @@ export default function Home() {
       })
       .catch(console.error);
     }, []);
-    
-  const [ghosPos, setghosPos] = useState({x:0, y:0});
-  const stageRef = useRef<Konva.Stage>(null);
-  const [scale, setScale] = useState(1);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [size, setSize] = useState({ w: 800, h: 600 });
 
   useEffect(() => {
     const resize = () => setSize({ w: innerWidth, h: innerHeight });
@@ -142,7 +134,7 @@ export default function Home() {
 
   return (
     <>
-      <UploadPage/>
+      <UploadPage imageProps={ghosPos}/>
       <Stage
         ref={stageRef}
         width={size.w} height={size.h}
@@ -157,8 +149,12 @@ export default function Home() {
         }}
       >
         <Layer>
-          <CanvasBackground/>
+          <CanvasBackground size={CANVAS_SIZE}/>
           <ColoredRect/>
+          {placements.map(p => (
+            <URLImage key={p.id} src={p.url} x={p.x} y={p.y} width={p.w} height={p.h}/>
+          ))}
+          <URLImage src="../assets/logo@2x.png" />
         </Layer>
       </Stage>
     </>

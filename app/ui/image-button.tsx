@@ -53,7 +53,7 @@ export default function UploadPage({imageProps}) {
         disabled={!file || uploading}
         className="px-4 py-2 bg-blue-500 text-white disabled:bg-gray-300"
       >
-        {uploading ? "Submitted" : "Submit"}
+        {uploading ? "Submitting" : "Submit"}
       </button>
     </form>
   );
