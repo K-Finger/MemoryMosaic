@@ -6,7 +6,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import useImage from 'use-image';
 import UploadPage from './ui/image-button';
 
-// an image placement
+// an image
 type Placement = {
   id: string;
   x: number;
@@ -14,6 +14,7 @@ type Placement = {
   w: number;
   h: number;
   url: string;
+  caption?: string;
 };
 
 
@@ -26,7 +27,11 @@ const URLImage = ({ src, ...rest }: {src: string; [key: string]: any}) => {
   return <KonvaImage image={image} {...rest} />;
 };
 
-const PlacedImage = ({ src, x, y, w, h }: {src: string; x: number; y: number; w: number; h: number}) => {
+const PlacedImage = ({ src, x, y, w, h, caption, onHover }: {
+  src: string; x: number; y: number; w: number; h: number;
+  caption?: string;
+  onHover: (info: {x: number; y: number; h: number; caption: string} | null) => void;
+}) => {
   const [image] = useImage(src);
   const imgRef = useRef<Konva.Image>(null);
   const SHRINK = 0.95;
@@ -40,6 +45,7 @@ const PlacedImage = ({ src, x, y, w, h }: {src: string; x: number; y: number; w:
       offsetX={0} offsetY={0}
       onMouseEnter={() => {
         if (hoverSound) { hoverSound.currentTime = 0; hoverSound.play().catch(() => {}); }
+        if (caption) onHover({ x: x + w, y, h, caption });
         const node = imgRef.current;
         if (!node) return;
         node.to({
@@ -51,6 +57,7 @@ const PlacedImage = ({ src, x, y, w, h }: {src: string; x: number; y: number; w:
         });
       }}
       onMouseLeave={() => {
+        onHover(null);
         const node = imgRef.current;
         if (!node) return;
         node.to({
@@ -114,15 +121,19 @@ export default function Home() {
   const [placements, setPlacements] = useState<Placement[]>([]);
 
   useEffect(() => {
-    fetch("/api/placements")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("placements:", data);
-        if (Array.isArray(data)) setPlacements(data);
-      })
-      .catch(console.error);
-    }, []);
+    const fetchPlacements = () =>
+      fetch("/api/placements")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setPlacements(data);
+        })
+        .catch(console.error);
+    fetchPlacements();
+    const interval = setInterval(fetchPlacements, 5000);
+    return () => clearInterval(interval);
+  }, []);
     
+  const [tooltip, setTooltip] = useState<{x: number; y: number; h: number; caption: string} | null>(null);
   const [ghost, setGhost] = useState<{src: string; x: number; y: number; w: number; h: number} | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [scale, setScale] = useState(0.3);
@@ -199,7 +210,7 @@ export default function Home() {
         <Layer>
           <Rect x={-3000} y={-3000} width={6000} height={6000} fill="white" />
           {placements.map((p) => (
-            <PlacedImage key={p.id} src={p.url} x={p.x} y={p.y} w={p.w} h={p.h} />
+            <PlacedImage key={p.id} src={p.url} x={p.x} y={p.y} w={p.w} h={p.h} caption={p.caption} onHover={setTooltip} />
           ))}
           {ghost && (
             <URLImage
@@ -225,6 +236,25 @@ export default function Home() {
           )}
         </Layer>
       </Stage>
+      {tooltip && (
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltip.x * scale + pos.x + 8,
+            top: (tooltip.y + tooltip.h / 2) * scale + pos.y,
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: 14,
+            pointerEvents: 'none',
+            maxWidth: 250,
+            zIndex: 100,
+          }}
+        >
+          {tooltip.caption}
+        </div>
+      )}
     </>
   );
 }

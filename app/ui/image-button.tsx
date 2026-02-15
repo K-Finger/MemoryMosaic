@@ -3,6 +3,7 @@ import { useState } from "react";
 
 export default function UploadPage({imageProps, canSubmit, onFileSelect, onUploaded}) {
   const [file, setFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -16,6 +17,7 @@ export default function UploadPage({imageProps, canSubmit, onFileSelect, onUploa
     formData.append("y", String(Math.round(imageProps.y)));
     formData.append("w", String(Math.round(imageProps.w)));
     formData.append("h", String(Math.round(imageProps.h)));
+    formData.append("caption", caption);
 
     const response = await fetch("/api/placements", {
         method: "POST",
@@ -28,6 +30,7 @@ export default function UploadPage({imageProps, canSubmit, onFileSelect, onUploa
     }
     else {
         setFile(null);
+        setCaption("");
         onFileSelect(null, 0, 0);
         onUploaded(result);
     }
@@ -50,6 +53,15 @@ export default function UploadPage({imageProps, canSubmit, onFileSelect, onUploa
             onFileSelect(null, 0, 0);
           }
         }}
+      />
+
+      <input
+        type="text"
+        placeholder="Add a caption..."
+        value={caption}
+        onChange={(e) => setCaption(e.target.value)}
+        className="px-3 py-2 border rounded"
+        maxLength={200}
       />
 
       <button
