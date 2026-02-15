@@ -18,7 +18,8 @@ type Placement = {
 
 
 const URLImage = ({ src, ...rest }: {src: string; [key: string]: any}) => {
-  const [image] = useImage(src, 'anonymous');
+  const [image, status] = useImage(src);
+  if (status === 'failed') console.error('Failed to load image:', src);
   return <KonvaImage image={image} {...rest} />;
 };
 
@@ -113,6 +114,10 @@ export default function Home() {
         onFileSelect={(src: string | null, w: number, h: number) => {
           if (src) setGhost({ src, x: 0, y: 0, w, h });
           else setGhost(null);
+        }}
+        onUploaded={(placement: Placement) => {
+          setPlacements((prev) => [...prev, placement]);
+          setGhost(null);
         }}
       />
       <Stage

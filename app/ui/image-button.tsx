@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-export default function UploadPage({imageProps, onFileSelect}) {
+export default function UploadPage({imageProps, onFileSelect, onUploaded}) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -27,9 +27,9 @@ export default function UploadPage({imageProps, onFileSelect}) {
         alert(result.error || "Upload failed");
     }
     else {
-        alert("Uploaded successfully!");
         setFile(null);
         onFileSelect(null, 0, 0);
+        onUploaded(result);
     }
     setUploading(false);
   };
