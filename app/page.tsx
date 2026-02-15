@@ -4,6 +4,7 @@ import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from "react-konv
 import Konva from 'konva';
 import { KonvaEventObject } from "konva/lib/Node";
 import useImage from 'use-image';
+import { snapPosition, snapSize, isAdjacent } from '@/lib/snap';
 import FloatingUploadPanel from './ui/floating-upload-panel';
 import MosaicStatus from './ui/mosaic-status';
 import CanvasControls from './ui/canvas-controls';
@@ -80,52 +81,6 @@ const PlacedImage = ({ src, x, y, w, h, caption, onHover }: {
   );
 };
 
-function findSnapPosition(dropX: number, dropY: number, w: number, h: number, placements: Placement[]): {x: number, y: number} | null {
-  if (placements.length === 0) return { x: dropX, y: dropY };
-
-  let best: {x: number, y: number} | null = null;
-  let bestDist = Infinity;
-
-  for (const p of placements) {
-    const candidates = [
-      { x: p.x + p.w, y: dropY }, // right of p
-      { x: p.x - w,   y: dropY }, // left of p
-      { x: dropX,     y: p.y + p.h }, // below p
-      { x: dropX,     y: p.y - h },   // above p
-    ];
-
-    for (const c of candidates) {
-      const dist = Math.hypot(c.x - dropX, c.y - dropY);
-      if (dist < bestDist && !checkImageOverlap({ x: c.x, y: c.y, w, h }, placements)) {
-        best = c;
-        bestDist = dist;
-      }
-    }
-  }
-
-  return best;
-}
-
-function isAdjacent(img: {x: number, y: number, w: number, h: number}, placements: Placement[]) {
-  return placements.some((p) => {
-    const touchX = img.x + img.w === p.x || p.x + p.w === img.x;
-    const touchY = img.y + img.h === p.y || p.y + p.h === img.y;
-    const overlapX = img.x < p.x + p.w && img.x + img.w > p.x;
-    const overlapY = img.y < p.y + p.h && img.y + img.h > p.y;
-    // touching on x-axis and overlapping on y-axis, or vice versa
-    return (touchX && overlapY) || (touchY && overlapX);
-  });
-}
-
-function checkImageOverlap(draggedImage: {x: number, y: number, w: number, h: number}, placements: Placement[]) {
-  return placements.some((p) =>
-    draggedImage.x < p.x + p.w &&
-    draggedImage.x + draggedImage.w > p.x &&
-    draggedImage.y < p.y + p.h &&
-    draggedImage.y + draggedImage.h > p.y
-  );
-}
-
 export default function Home() {
   const [placements, setPlacements] = useState<Placement[]>([]);
 
@@ -138,7 +93,7 @@ export default function Home() {
         })
         .catch(console.error);
     fetchPlacements();
-    const interval = setInterval(fetchPlacements, 5000);
+    const interval = setInterval(fetchPlacements, 5000); // auto refresh ever 5000 ms. move to websockets
     return () => clearInterval(interval);
   }, []);
     
@@ -257,30 +212,30 @@ export default function Home() {
                 onDragEnd={(e: KonvaEventObject<DragEvent>) => {
                   const dropX = e.target.x();
                   const dropY = e.target.y();
-                  const snap = findSnapPosition(dropX, dropY, ghost.w, ghost.h, placements);
-                  if (snap) {
+                  const snap = snapPosition(dropX, dropY, ghost.w, ghost.h, placements);
+                  if (snap.x !== dropX || snap.y !== dropY) {
                     if (snapSound) { snapSound.currentTime = 0; snapSound.play().catch(() => {}); }
-                    setGhost({ ...ghost, x: snap.x, y: snap.y });
-                    e.target.x(snap.x);
-                    e.target.y(snap.y);
-                  } else {
-                    e.target.x(ghost.x);
-                    e.target.y(ghost.y);
                   }
+                  setGhost({ ...ghost, x: snap.x, y: snap.y });
+                  e.target.x(snap.x);
+                  e.target.y(snap.y);
                 }}
                 onTransformEnd={() => {
                   const node = ghostRef.current;
                   if (!node) return;
-                  const scaleX = node.scaleX();
-                  const scaleY = node.scaleY();
+                  const sx = node.scaleX();
+                  const sy = node.scaleY();
                   node.scaleX(1);
                   node.scaleY(1);
+                  const rawW = Math.round(node.width() * sx);
+                  const rawH = Math.round(node.height() * sy);
+                  const snapped = snapSize(node.x(), node.y(), rawW, rawH, placements);
                   setGhost({
                     ...ghost,
                     x: node.x(),
                     y: node.y(),
-                    w: Math.round(node.width() * scaleX),
-                    h: Math.round(node.height() * scaleY),
+                    w: snapped.w,
+                    h: snapped.h,
                   });
                 }}
               />
