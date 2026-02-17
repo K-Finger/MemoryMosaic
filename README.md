@@ -15,22 +15,8 @@ Hover over any tile to read its caption and learn the story behind it.
 
 ![MemoryMosaic preview](public/readmepreview.png)
 
-## How to Run
-Running MemoryMosiac requires Node.js. Clone the repo, install dependencies, and start the dev server:
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the mosaic.
-
-You will need a `.env.local` file with your Supabase credentials:
-```
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
+## Available Online!
+https://memorymosaic-khaki.vercel.app/
 
 ## Technical Implementation
 MemoryMosaic is built a Next.js App a Typescript React frontend. Images are stored in Supabase Storage with placement metadata (position, size, caption). The canvas uses magnetic snapping that lets users precisely align images to the existing mosaic without gaps or overlaps. 
