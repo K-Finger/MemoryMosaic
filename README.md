@@ -1,11 +1,9 @@
 # MemoryMosaic
-Our MinneHack 2025 project.
+Won 1st Place 🥇 at MinneHack 2026.
 
 [Click here](https://memorymosaic-khaki.vercel.app/) to see the live demo.
 
 Members: Kieran Finger, Qise Salem, Justin Nguyen, Victor Hofstetter
-
-**MinneHack 2026 Theme: "Mending over Ending"**
 
 MemoryMosaic is a collaborative, never-ending mosaic where anyone can upload an image and snap it into place on a shared infinite canvas. Each tile is mended together, making a community-built collage.
 
@@ -14,9 +12,6 @@ Hover over any tile to read its caption and learn the story behind it.
 ![MemoryMosaic view](public/view.png)
 
 ![MemoryMosaic preview](public/readmepreview.png)
-
-## Available Online!
-https://memorymosaic-khaki.vercel.app/
 
 ## Technical Implementation
 MemoryMosaic is built a Next.js App a Typescript React frontend. Images are stored in Supabase Storage with placement metadata (position, size, caption). The canvas uses magnetic snapping that lets users precisely align images to the existing mosaic without gaps or overlaps. 
